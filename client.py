@@ -1,30 +1,41 @@
 import socket
-import matplotlib.pyplot as plt
- 
-from PIL import Image
+import io
+import cv2
+import numpy as np
+# IP-адрес и порт сервера
+server_ip = '192.168.0.194'
+server_port = 12345
 
+# Создание сокета и подключение к серверу
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_address = ('37.112.20.173', 12345)   
-client_socket.connect(server_address) 
-#136.169.224.176 КИРИЛЛ 37.112.20.173
-# Создаем окно для отображения рисунка
-fig, ax = plt.subplots()
+client_socket.connect((server_ip, server_port))
+print('Connected to the server.')
 
+# Получение и отображение данных от сервера
 while True:
-    
-    image_bytes = b''
-    while True:
-        data = client_socket.recv(1024)
+    # Получение размера изображения
+    image_size_bytes = client_socket.recv(4)
+    image_size = int.from_bytes(image_size_bytes, 'big')
+
+    # Получение данных изображения
+    image_data = b''
+    while len(image_data) < image_size:
+        data = client_socket.recv(8096) #4096 *2 = 81?ө
         if not data:
             break
-        image_bytes += data
+        image_data += data
 
-    
-    img = Image.frombytes('RGB', (600, 400), image_bytes)
-    plt.imshow(img)
+    # Преобразование данных изображения в массив numpy
+    image_array = bytearray(image_data)
+     
+    np_array = np.asarray(image_array, dtype=np.uint8)
+    print(np_array)
+    # Преобразование массива в изображение OpenCV
+    image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
 
-   
-    plt.pause(0.001)
+    # Отображение изображения
+    cv2.imshow('Image', image)
+    cv2.waitKey(1)
 
- 
+# Закрытие соединения
 client_socket.close()
