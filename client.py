@@ -1,5 +1,4 @@
 import socket
-import io
 import cv2
 import numpy as np
 # IP-адрес и порт сервера

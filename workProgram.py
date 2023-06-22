@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-array_size = 1000
+array_size = 100
 
 try:
     Z = np.load('array.npy')
