@@ -1,40 +1,63 @@
-import socket
-import cv2
 import numpy as np
-# IP-адрес и порт сервера
-server_ip = '192.168.0.194'
-server_port = 12345
+import matplotlib.pyplot as plt
+import socket
 
-# Создание сокета и подключение к серверу
+# Размер массива
+array_size = 100
+
+# Создаем фигуру и оси для отображения данных
+fig, ax = plt.subplots()
+
+# Создаем изображение, которое будет обновляться
+image = ax.imshow(np.zeros((array_size, array_size)), cmap='jet', extent=[-10, 10, -10, 10], origin='lower',
+                  interpolation='nearest')
+
+# Создаем цветовую шкалу
+colorbar = plt.colorbar(image, ax=ax)
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.title('Real-time Plot')
+
+# Функция для обновления изображения и цветовой шкалы
+def update_image(Z):
+    global array_size
+
+    # Изменяем размер массива Z до желаемого размера
+    Z.resize((array_size, array_size))
+
+    image.set_data(Z)
+
+    # Обновляем границы цветовой шкалы на основе текущих значений массива Z
+    vmin = np.min(Z)
+    vmax = np.max(Z)
+    image.set_clim(vmin, vmax)
+
+    plt.draw()
+
+
+# Создаем клиентский сокет и подключаемся к серверу
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect((server_ip, server_port))
-print('Connected to the server.')
+client_socket.connect(('192.168.0.194', 12345))
+print('Connected to server')
 
-# Получение и отображение данных от сервера
+# Получаем и отображаем данные в режиме реального времени
 while True:
-    # Получение размера изображения
-    image_size_bytes = client_socket.recv(4)
-    image_size = int.from_bytes(image_size_bytes, 'big')
+    data = client_socket.recv(array_size * array_size * 8) # 8 байт на каждое значение типа float64
+    if not data:
+        break
 
-    # Получение данных изображения
-    image_data = b''
-    while len(image_data) < image_size:
-        data = client_socket.recv(8096) #4096 *2 = 81?ө
-        if not data:
-            break
-        image_data += data
+    # Проверяем, что размер данных является кратным размеру элемента
+    if len(data)  != array_size * array_size * 8:
+        continue
 
-    # Преобразование данных изображения в массив numpy
-    image_array = bytearray(image_data)
-     
-    np_array = np.asarray(image_array, dtype=np.uint8)
-    print(np_array)
-    # Преобразование массива в изображение OpenCV
-    image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
+    # Преобразуем данные в массив numpy
+    Z = np.frombuffer(data, dtype=np.float64)
+    Z = Z.reshape((array_size, array_size))
 
-    # Отображение изображения
-    cv2.imshow('Image', image)
-    cv2.waitKey(1)
+    # Обновляем изображение и цветовую шкалу
+    update_image(Z)
+    plt.pause(0.001) #
 
-# Закрытие соединения
+# Закрываем соединение и окно с изображением
 client_socket.close()
+plt.close(fig)

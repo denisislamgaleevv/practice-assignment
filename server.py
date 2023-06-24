@@ -1,7 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
-import io
 import socket
 
 array_size = 100
@@ -53,23 +51,13 @@ def update_array(event):
 
     # Очищаем текущий график и отображаем массив Z
     plt.clf()
-    plt.imshow(Z, cmap='jet', extent=[-10, 10, -10, 10], origin='lower', interpolation='bilinear')
+    plt.imshow(Z, cmap='jet', extent=[-10, 10, -10, 10], origin='lower', interpolation='nearest')
     plt.colorbar()
     plt.draw()
 
-    buf = io.BytesIO()
-    plt.savefig(buf, format='JPEG')
-    buf.seek(0)
-    image = Image.open(buf)
-
-    with io.BytesIO() as output:
-        image.save(output, format='JPEG')
-        image_bytes = output.getvalue()
-
-    image_size = len(image_bytes).to_bytes(8, 'big')
-
-    # Отправляем размер изображения и само изображение клиенту
-    client_socket.sendall(image_size + image_bytes)
+    # Преобразуем массив Z в тип float64, вытягиваем его в одномерный массив и отправляем клиенту
+    Z_bytes = Z.astype(np.float64).flatten().tobytes()
+    client_socket.sendall(Z_bytes)
 
 def on_close(event):
     # Событие закрытия графического окна
@@ -83,7 +71,7 @@ y = np.linspace(-10, 10, array_size)
 X, Y = np.meshgrid(x, y)
 
 # Отображаем начальный массив Z на графике
-plt.imshow(Z, cmap='viridis', extent=[-10, 10, -10, 10], origin='lower', interpolation='nearest')
+plt.imshow(Z, cmap='jet', extent=[-10, 10, -10, 10], origin='lower', interpolation='nearest')
 plt.colorbar()
 plt.xlabel('X')
 plt.ylabel('Y')
