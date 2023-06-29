@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import socket
 import pickle
 
-array_size = 300
+array_size =300
 
  
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -14,14 +14,13 @@ print('Waiting for client connection...')
 client_socket, client_address = server_socket.accept()
 print('Client connected:', client_address)
  
-try:
-    Z = np.load('array.npy')
-except FileNotFoundError:
-    Z = np.zeros((array_size, array_size))
+#try:
+#    Z = np.load('array.npy')
+#except FileNotFoundError:
+Z = np.zeros((array_size, array_size))
 
 drawing = False
 prev_x, prev_y = None, None
-
 def update_array(event):
     global Z, drawing, prev_x, prev_y
 
@@ -34,13 +33,23 @@ def update_array(event):
             new_Z = np.exp(-(np.square(X - mu[0]) + np.square(Y - mu[1])) / (2 * sigma[0][0])) / (
                 2 * np.pi * np.sqrt(np.linalg.det(sigma))
             )
-
-            indices = np.nonzero(new_Z) 
-            data = new_Z[indices] 
+            
+            
+           
+           
+             
+            Z[np.abs(Z) <= 0.00000001] = 0
+            new_Z[np.abs(new_Z) <= 0.00000001] = 0
+            t = Z
+             
+            indices = np.nonzero(t - new_Z) 
+             
+            data =  new_Z[indices]
 
             Z[indices] += data
-
+           
             prev_x, prev_y = x, y
+           
         else:
             drawing = True
             prev_x, prev_y = int(event.xdata), int(event.ydata)
@@ -52,15 +61,17 @@ def update_array(event):
     plt.imshow(Z, cmap='jet', extent=[-10, 10, -10, 10], origin='lower', interpolation='nearest')
     plt.colorbar()
     plt.draw()
-
+    
     if 'indices' in locals() and 'data' in locals():
         indices_data = (indices, data)
         data_bytes = pickle.dumps(indices_data)
 
-        client_socket.sendall(data_bytes)
+        data_length = len(data_bytes).to_bytes(4, byteorder='big')
+        client_socket.sendall(data_length + data_bytes)
+
 
 def on_close(event):
-    np.save('array.npy', Z) 
+    #np.save('array.npy', Z) 
     client_socket.close()
     server_socket.close()
 
