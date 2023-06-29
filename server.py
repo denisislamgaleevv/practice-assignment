@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import socket
+import pickle
 
-array_size = 100
+array_size = 300
 
 # Создаем серверный сокет и ждем подключения клиента
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -37,7 +38,10 @@ def update_array(event):
                 2 * np.pi * np.sqrt(np.linalg.det(sigma))
             )
 
-            Z += new_Z
+            indices = np.nonzero(new_Z)  # Получаем индексы ненулевых элементов
+            data = new_Z[indices]  # Получаем значения ненулевых элементов
+
+            Z[indices] += data
 
             prev_x, prev_y = x, y
         else:
@@ -55,9 +59,13 @@ def update_array(event):
     plt.colorbar()
     plt.draw()
 
-    # Преобразуем массив Z в тип float64, вытягиваем его в одномерный массив и отправляем клиенту
-    Z_bytes = Z.astype(np.float64).flatten().tobytes()
-    client_socket.sendall(Z_bytes)
+    if 'indices' in locals() and 'data' in locals():
+        # Преобразуем индексы и значения в формат, пригодный для передачи через сокет
+        indices_data = (indices, data)
+        data_bytes = pickle.dumps(indices_data)
+
+        # Отправляем данные клиенту
+        client_socket.sendall(data_bytes)
 
 def on_close(event):
     # Событие закрытия графического окна
@@ -75,7 +83,7 @@ plt.imshow(Z, cmap='jet', extent=[-10, 10, -10, 10], origin='lower', interpolati
 plt.colorbar()
 plt.xlabel('X')
 plt.ylabel('Y')
-plt.title('Практика Роснефть')
+plt.title('Сервер')
 
 # Подключаем обработчики событий
 cid_press = plt.connect('button_press_event', update_array)  # Нажатие кнопки мыши
